@@ -27,3 +27,44 @@ CNN有这两个先验知识，所以它只需要相对少的数据去学习一�
 
 # Related Work
 
+目前大规模的transformer模型一般是先在大规模的语料库上面进行预训练，然后在目标任务上面进行微调。
+
+例如：
+
+* Bert：denoising self-supervised pre-training，挖掉一个词然后让模型进行预测
+* GPT：language modeling，然模型预测下一个词
+
+让每个像素点作为一个元素做自注意力的复杂度太高。
+
+当然也可以不用整张图，只是用小窗口（local neighborhood）做自注意力。
+
+==Spare Transformer：只对一些稀疏的点做自注意力==
+
+==在不同大小的block上面做自注意力==
+
+在轴上面做自注意力
+
+上面这些特制的自注意力结构在计算机视觉上面的表现都不错，但是需要很复杂的工程来加速算子
+
+# Method
+
+模型尽可能按照原始的transformer模型设计，这样几乎可以把NLP里面的transformer模型拿过来用，并且transformer在NLP领域有非常高效的一些实现
+
+图一：对于一个有三个通道大小为224 * 224的图片，我们将它分为大小为16 * 16 = 256的patch，一共可以分为14 * 14 = 196个。此时一张三通道224 * 224的图片可以看作是一个序列长度为196，维度为256 * 3 = 768的序列。再加上序号为0的那一个特殊字符，所以整体进入transformer的序列长度为197。
+
+Linear Projection of Flattened Patches表示一个全连接层（文章中用$E$表示），用于改变输入到transformer结构的数据的维度。在本文中这个线性层为768 * 768。为了分类，文章借鉴了Bert里面的cls token，这是一个可以学习的特征，他跟图像的特征有同样的维度（都为768）。作者本篇论文的所有实验都是使用class token做的，主要目的就是跟原始的transformer尽可能保持一致，这样可以说明一个标准的transformer一样可以做好视觉任务。
+
+在计算机视觉领域，在最后进行分类之前会对最后的feature map进行GAP（Global Average Pooling）
+
+table 8表示各种位置编码的分类效果，结果显示文章中的三种位置编码的方式对实验结果都没有特别大的差异，作者给的解释是实验中使用的是14 * 14的patch，模型想知道这些patch的相对位置信息还是比较容易的，所以位置编码对实验的结果影响不大
+
+# Experiments
+
+模型的命名里面，最后的数字表示patch-size
+
+BiT：这是 Google 提出的一个预训练模型，叫 **Big Transfer**。它用大规模的数据预训练了 ResNet（没有用 Transformer）；
+
+# 总结
+
+对于一个预训练好的vision transformer，不太好做微调。当图片变大时，序列的长度也会相应变大，transformer理论上可以处理任意长度的序列。但是这会导致提前预训练好的位置编码失效，比如原来的位置编码是1~9，这里是有明确的位置信息的意义在里面。图片变大，保持patch size不变，可能位置编码需要提升到1~25，此时2D interpolation可以作为临时的解决方案
+
